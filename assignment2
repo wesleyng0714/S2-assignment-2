@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>運動教學清單</title>
+  <style>
+    /* 原有樣式保持不變 */
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f4f4f9;
+    }
+    header {
+      background-color: #4CAF50;
+      color: white;
+      padding: 1rem;
+      text-align: center;
+    }
+    main {
+      padding: 1rem;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    .form-section {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+    .form-section input, .form-section select {
+      padding: 0.5rem;
+      font-size: 1rem;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+    .form-section button {
+      background-color: #4CAF50;
+      color: white;
+      padding: 0.5rem;
+      font-size: 1rem;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    .filters {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1rem;
+      background: white;
+      padding: 1rem;
+      border-radius: 5px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    .exercise-list {
+      list-style: none;
+      padding: 0;
+    }
+    .exercise-item {
+      background: white;
+      margin: 0.5rem 0;
+      padding: 1rem;
+      border-radius: 5px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    .exercise-item h3 {
+      margin-top: 0;
+    }
+    .exercise-item .meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .exercise-item button {
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 3px;
+      cursor: pointer;
+    }
+    .exercise-item button.favorited {
+      background-color: #f44336;
+    }
+    .loading {
+      text-align: center;
+      margin: 1rem 0;
+      padding: 1rem;
+    }
+    .error {
+      color: red;
+      margin: 0.5rem 0;
+    }
+    .hidden {
+      display: none;
+    }
+    .show-favorites {
+      margin: 1rem 0;
+    }
+    .video-container {
+      margin-top: 1rem;
+      position: relative;
+      padding-bottom: 56.25%; /* 16:9 */
+      height: 0;
+      overflow: hidden;
+    }
+    .video-container iframe {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+    
+    /* 新增刷新按鈕樣式 */
+    .refresh-container {
+      display: flex;
+      justify-content: flex-end;
+      margin-bottom: 1rem;
+    }
+    #refresh-button {
+      background-color: #2196F3;
+      color: white;
+      padding: 0.5rem 1rem;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    #refresh-button:hover {
+      background-color: #0b7dda;
+    }
+    #refresh-button:disabled {
+      background-color: #cccccc;
+      cursor: not-allowed;
+    }
+    .refresh-icon {
+      width: 16px;
+      height: 16px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>運動教學清單</h1>
+  </header>
+  <main>
+    <section id="auth-section">
+      <!-- 註冊表單 -->
+      <form id="register-form" class="form-section">
+        <h2>註冊</h2>
+        <input type="text" id="register-username" placeholder="Username" required minlength="3" maxlength="20" pattern="[a-zA-Z0-9]+" title="只能包含字母和數字" />
+        <input type="password" id="register-password" placeholder="Password" required minlength="6" />
+        <button type="submit">註冊</button>
+        <div id="register-error" class="error"></div>
+      </form>
+
+      <!-- 登入表單 -->
+      <form id="login-form" class="form-section">
+        <h2>登入</h2>
+        <input type="text" id="username" placeholder="Username" required />
+        <input type="password" id="password" placeholder="Password" required />
+        <button type="submit">登入</button>
+        <div id="login-error" class="error"></div>
+      </form>
+      <button id="logout-btn" class="hidden">登出</button>
+    </section>
+
+    <section id="exercise-section" class="hidden">
+      <!-- 新增刷新按鈕容器 -->
+      <div class="refresh-container">
+        <button id="refresh-button">
+          <svg class="refresh-icon" viewBox="0 0 24 24">
+            <path fill="currentColor" d="M17.65,6.35C16.2,4.9 14.21,4 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20C15.73,20 18.84,17.45 19.73,14H17.65C16.83,16.33 14.61,18 12,18A6,6 0 0,1 6,12A6,6 0 0,1 12,6C13.66,6 15.14,6.69 16.22,7.78L13,11H20V4L17.65,6.35Z" />
+          </svg>
+          刷新內容
+        </button>
+      </div>
+      
+      <div class="filters">
+        <div>
+          <label for="search">搜尋</label>
+          <input type="text" id="search" placeholder="輸入關鍵字">
+        </div>
+        <div>
+          <label for="category">分類</label>
+          <select id="category">
+            <option value="">全部</option>
+            <!-- 分類選項將由JS動態生成 -->
+          </select>
+        </div>
+        <div>
+          <label for="sort">排序</label>
+          <select id="sort">
+            <option value="">預設</option>
+            <option value="title">名稱 (A-Z)</option>
+            <option value="-title">名稱 (Z-A)</option>
+            <option value="category">分類 (A-Z)</option>
+            <option value="-category">分類 (Z-A)</option>
+          </select>
+        </div>
+      </div>
+      
+      <div class="show-favorites">
+        <input type="checkbox" id="show-favorites">
+        <label for="show-favorites">只顯示已收藏項目</label>
+      </div>
+      
+      <h2>運動教學內容</h2>
+      <ul id="exercise-list" class="exercise-list"></ul>
+      <div class="loading hidden" id="loading">載入中...</div>
+      <div id="no-results" class="hidden">沒有找到符合條件的項目</div>
+    </section>
+  </main>
+
+  <script>
+    const API_BASE = 'https://dae-mobile-assignment.hkit.cc/api';
+    let token = null;
+    let currentPage = 1;
+    let isLoading = false;
+    let totalPages = 1;
+    let allCategories = [];
+    let bookmarkedIds = [];
+    let searchParams = {
+      search: '',
+      category: '',
+      sort: '',
+      favoritesOnly: false
+    };
+
+    // DOM元素
+    const registerForm = document.getElementById('register-form');
+    const loginForm = document.getElementById('login-form');
+    const logoutBtn = document.getElementById('logout-btn');
+    const exerciseSection = document.getElementById('exercise-section');
+    const exerciseList = document.getElementById('exercise-list');
+    const loadingIndicator = document.getElementById('loading');
+    const noResults = document.getElementById('no-results');
+    const registerError = document.getElementById('register-error');
+    const loginError = document.getElementById('login-error');
+    const searchInput = document.getElementById('search');
+    const categorySelect = document.getElementById('category');
+    const sortSelect = document.getElementById('sort');
+    const showFavorites = document.getElementById('show-favorites');
+    const refreshButton = document.getElementById('refresh-button'); // 新增刷新按鈕
+
+    // 初始化
+    document.addEventListener('DOMContentLoaded', init);
+
+    async function init() {
+      setupEventListeners();
+      checkAuthStatus();
+    }
+
+    function setupEventListeners() {
+      // 表單事件
+      registerForm.addEventListener('submit', handleRegister);
+      loginForm.addEventListener('submit', handleLogin);
+      logoutBtn.addEventListener('click', handleLogout);
+      
+      // 篩選器事件
+      searchInput.addEventListener('input', debounce(handleSearch, 500));
+      categorySelect.addEventListener('change', handleCategoryChange);
+      sortSelect.addEventListener('change', handleSortChange);
+      showFavorites.addEventListener('change', handleFavoritesToggle);
+      
+      // 新增刷新按鈕事件
+      refreshButton.addEventListener('click', handleRefresh);
+      
+      // 無限滾動
+      window.addEventListener('scroll', handleScroll);
+    }
+
+    // 新增刷新處理函數
+    function handleRefresh() {
+      if (isLoading) return;
+      
+      // 禁用按鈕並顯示加載狀態
+      refreshButton.disabled = true;
+      const originalText = refreshButton.innerHTML;
+      refreshButton.innerHTML = `
+        <svg class="refresh-icon spin" viewBox="0 0 24 24">
+          <path fill="currentColor" d="M17.65,6.35C16.2,4.9 14.21,4 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20C15.73,20 18.84,17.45 19.73,14H17.65C16.83,16.33 14.61,18 12,18A6,6 0 0,1 6,12A6,6 0 0,1 12,6C13.66,6 15.14,6.69 16.22,7.78L13,11H20V4L17.65,6.35Z" />
+        </svg>
+        刷新中...
+      `;
+      
+      // 重置並重新載入數據
+      resetAndLoadExercises();
+      
+      // 重新啟用按鈕
+      setTimeout(() => {
+        refreshButton.disabled = false;
+        refreshButton.innerHTML = originalText;
+      }, 1000);
+    }
+
+    // 防抖函數
+    function debounce(func, delay) {
+      let timeoutId;
+      return function() {
+        const context = this;
+        const args = arguments;
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => func.apply(context, args), delay);
+      };
+    }
+
+    // 檢查滾動位置
+    function handleScroll() {
+      const { scrollTop, scrollHeight, clientHeight } = document.documentElement;
+      const isNearBottom = scrollTop + clientHeight >= scrollHeight - 100;
+      
+      if (isNearBottom && !isLoading && currentPage <= totalPages) {
+        loadExercises();
+      }
+    }
+
+    // 搜尋處理
+    function handleSearch() {
+      searchParams.search = searchInput.value.trim();
+      resetAndLoadExercises();
+    }
+
+    // 分類處理
+    function handleCategoryChange() {
+      searchParams.category = categorySelect.value;
+      resetAndLoadExercises();
+    }
+
+    // 排序處理
+    function handleSortChange() {
+      searchParams.sort = sortSelect.value;
+      resetAndLoadExercises();
+    }
+
+    // 只顯示收藏項目
+    function handleFavoritesToggle() {
+      searchParams.favoritesOnly = showFavorites.checked;
+      resetAndLoadExercises();
+    }
+
+    // 重置並重新載入
+    function resetAndLoadExercises() {
+      currentPage = 1;
+      totalPages = 1;
+      exerciseList.innerHTML = '';
+      noResults.classList.add('hidden');
+      loadExercises();
+    }
+
+    // 註冊處理
+    async function handleRegister(e) {
+      e.preventDefault();
+      const username = document.getElementById('register-username').value;
+      const password = document.getElementById('register-password').value;
+
+      registerError.textContent = '';
+
+      try {
+        validateInput(username, password);
+        
+        const response = await fetch(`${API_BASE}/auth/signup`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ username, password }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || '註冊失敗');
+        }
+        
+        const data = await response.json();
+        alert('註冊成功，請登入');
+        registerForm.reset();
+      } catch (error) {
+        registerError.textContent = error.message;
+        console.error('Registration error:', error);
+      }
+    }
+
+    // 登入處理
+    async function handleLogin(e) {
+      e.preventDefault();
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('password').value;
+
+      loginError.textContent = '';
+
+      try {
+        const response = await fetch(`${API_BASE}/auth/login`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ username, password }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || '登入失敗');
+        }
+        
+        const data = await response.json();
+        token = data.token;
+        
+        // 存儲token
+        localStorage.setItem('authToken', token);
+        
+        // 檢查token是否有效
+        await checkAuthStatus();
+        
+        // 更新UI
+        loginForm.style.display = 'none';
+        registerForm.style.display = 'none';
+        logoutBtn.style.display = 'block';
+        exerciseSection.style.display = 'block';
+        
+        // 載入分類和收藏
+        await Promise.all([
+          loadCategories(),
+          loadBookmarks()
+        ]);
+        
+        // 重置並載入數據
+        resetAndLoadExercises();
+      } catch (error) {
+        loginError.textContent = error.message;
+        console.error('Login error:', error);
+      }
+    }
+
+    // 登出處理
+    function handleLogout() {
+      token = null;
+      localStorage.removeItem('authToken');
+      loginForm.style.display = 'block';
+      registerForm.style.display = 'block';
+      logoutBtn.style.display = 'none';
+      exerciseSection.style.display = 'none';
+      exerciseList.innerHTML = '';
+      currentPage = 1;
+      loginError.textContent = '';
+      registerError.textContent = '';
+    }
+
+    // 檢查認證狀態
+    async function checkAuthStatus() {
+      const savedToken = localStorage.getItem('authToken');
+      if (savedToken) {
+        try {
+          // 驗證token是否有效
+          const checkResponse = await fetch(`${API_BASE}/auth/check`, {
+            headers: {
+              'Authorization': `Bearer ${savedToken}`
+            }
+          });
+          
+          if (checkResponse.ok) {
+            token = savedToken;
+            loginForm.style.display = 'none';
+            registerForm.style.display = 'none';
+            logoutBtn.style.display = 'block';
+            exerciseSection.style.display = 'block';
+            
+            // 載入分類和收藏
+            await Promise.all([
+              loadCategories(),
+              loadBookmarks()
+            ]);
+            
+            loadExercises();
+          } else {
+            localStorage.removeItem('authToken');
+          }
+        } catch (error) {
+          console.error('Token check error:', error);
+          localStorage.removeItem('authToken');
+        }
+      }
+    }
+
+    // 載入分類
+    async function loadCategories() {
+      try {
+        const response = await fetch(`${API_BASE}/exercises?limit=1`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          // 假設第一個項目有分類信息
+          if (data.items && data.items.length > 0) {
+            // 實際應用中應該從API獲取所有分類
+            // 這裡只是示例，實際應該從API獲取完整分類列表
+            allCategories = [...new Set(data.items.map(item => item.category))];
+            updateCategoryFilter();
+          }
+        }
+      } catch (error) {
+        console.error('Load categories error:', error);
+      }
+    }
+
+    // 更新分類篩選器
+    function updateCategoryFilter() {
+      categorySelect.innerHTML = '<option value="">全部</option>';
+      allCategories.forEach(category => {
+        const option = document.createElement('option');
+        option.value = category;
+        option.textContent = category;
+        categorySelect.appendChild(option);
+      });
+    }
+
+    // 載入收藏
+    async function loadBookmarks() {
+      if (!token) return;
+      
+      try {
+        const response = await fetch(`${API_BASE}/bookmarks`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          bookmarkedIds = data.item_ids || [];
+        }
+      } catch (error) {
+        console.error('Load bookmarks error:', error);
+      }
+    }
+
+    // 載入運動教學清單
+    async function loadExercises() {
+      if (isLoading || !token || currentPage > totalPages) return;
+      isLoading = true;
+      loadingIndicator.classList.remove('hidden');
+
+      try {
+        // 構建查詢參數
+        const params = new URLSearchParams({
+          page: currentPage,
+          limit: 5,
+          ...(searchParams.search && { search: searchParams.search }),
+          ...(searchParams.category && { category: searchParams.category }),
+          ...(searchParams.sort && { sort: searchParams.sort })
+        });
+
+        const response = await fetch(`${API_BASE}/exercises?${params}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+        });
+
+        if (!response.ok) {
+          if (response.status === 401) {
+            localStorage.removeItem('authToken');
+            token = null;
+            handleLogout();
+            throw new Error('登入已過期，請重新登入');
+          }
+          const errorData = await response.json();
+          throw new Error(errorData.error || '載入失敗');
+        }
+
+        const data = await response.json();
+        totalPages = Math.ceil(data.pagination.total / data.pagination.limit);
+        
+        if (data.items && data.items.length > 0) {
+          // 過濾只顯示收藏項目
+          const itemsToShow = searchParams.favoritesOnly 
+            ? data.items.filter(item => bookmarkedIds.includes(item.id))
+            : data.items;
+          
+          if (itemsToShow.length > 0 || currentPage > 1) {
+            renderExercises(itemsToShow);
+            currentPage += 1;
+          }
+          
+          if (itemsToShow.length === 0 && currentPage === 1) {
+            noResults.classList.remove('hidden');
+          }
+        } else if (currentPage === 1) {
+          noResults.classList.remove('hidden');
+        }
+      } catch (error) {
+        console.error('Load exercises error:', error);
+        alert(error.message);
+      } finally {
+        isLoading = false;
+        loadingIndicator.classList.add('hidden');
+      }
+    }
+
+    // 顯示運動教學清單
+    function renderExercises(exercises) {
+      if (exercises.length === 0 && currentPage === 1) {
+        noResults.classList.remove('hidden');
+        return;
+      }
+      
+      exercises.forEach((exercise) => {
+        const li = document.createElement('li');
+        li.className = 'exercise-item';
+        li.innerHTML = `
+          <h3>${exercise.title}</h3>
+          <p>${exercise.description}</p>
+          <div class="meta">
+            <small>分類: ${exercise.category}</small>
+            <button class="favorite-btn" data-id="${exercise.id}">
+              ${bookmarkedIds.includes(exercise.id) ? '取消收藏' : '收藏'}
+            </button>
+          </div>
+          ${exercise.videoUrl ? `
+            <div class="video-container">
+              <iframe src="${exercise.videoUrl.replace('watch?v=', 'embed/')}" 
+                      frameborder="0" 
+                      allowfullscreen></iframe>
+            </div>
+          ` : ''}
+        `;
+        exerciseList.appendChild(li);
+      });
+    }
+
+    // 收藏功能處理
+    exerciseList.addEventListener('click', async (e) => {
+      if (e.target.classList.contains('favorite-btn')) {
+        const exerciseId = parseInt(e.target.dataset.id);
+        const isCurrentlyFavorited = e.target.textContent.trim() === '取消收藏';
+        
+        try {
+          const endpoint = `${API_BASE}/bookmarks/${exerciseId}`;
+          const response = await fetch(endpoint, {
+            method: isCurrentlyFavorited ? 'DELETE' : 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            },
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || (isCurrentlyFavorited ? '取消收藏失敗' : '收藏失敗'));
+          }
+
+          // 更新本地收藏列表
+          if (isCurrentlyFavorited) {
+            bookmarkedIds = bookmarkedIds.filter(id => id !== exerciseId);
+          } else {
+            bookmarkedIds.push(exerciseId);
+          }
+          
+          // 更新按鈕狀態
+          e.target.textContent = isCurrentlyFavorited ? '收藏' : '取消收藏';
+          
+          // 如果只顯示收藏項目且取消收藏，則移除該項目
+          if (searchParams.favoritesOnly && isCurrentlyFavorited) {
+            e.target.closest('li').remove();
+            if (exerciseList.children.length === 0) {
+              noResults.classList.remove('hidden');
+            }
+          }
+        } catch (error) {
+          console.error('Favorite error:', error);
+          alert(error.message);
+        }
+      }
+    });
+
+    // 輸入驗證
+    function validateInput(username, password) {
+      if (!username || !password) {
+        throw new Error('請填寫所有欄位');
+      }
+      
+      if (username.length < 3 || username.length > 20) {
+        throw new Error('用戶名長度應在3-20個字符之間');
+      }
+      
+      if (!/^[a-zA-Z0-9]+$/.test(username)) {
+        throw new Error('用戶名只能包含字母和數字');
+      }
+      
+      if (password.length < 6) {
+        throw new Error('密碼長度至少為6個字符');
+      }
+    }
+  </script>
+</body>
+</html>
